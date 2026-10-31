@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PokéBinder – check je kaartwaarde</title>
+<style>
+:root{--bg1:#ffe27a;--bg2:#ff7a59;--bg3:#4b6fff;--card:#ffffffee;--ink:#1d2340;--muted:#5b6385;--accent:#e63946;--line:#1d234022;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg1:#2a2f6b;--bg2:#5b2a7a;--bg3:#0d1030;--card:#171b3dee;--ink:#f1f3ff;--muted:#a9b0d6;--line:#ffffff22}}
+:root[data-theme="dark"]{--bg1:#2a2f6b;--bg2:#5b2a7a;--bg3:#0d1030;--card:#171b3dee;--ink:#f1f3ff;--muted:#a9b0d6;--line:#ffffff22}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;color:var(--ink);
+background:radial-gradient(circle at 15% 10%,var(--bg1),transparent 45%),radial-gradient(circle at 90% 90%,var(--bg3),transparent 50%),linear-gradient(135deg,var(--bg2),var(--bg3));background-attachment:fixed}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.14;
+background-image:radial-gradient(circle at 50% 50%,#fff 0 7px,transparent 8px),linear-gradient(#fff 0 0);
+background-size:90px 90px;background-image:radial-gradient(circle,#fff 0 9px,#0000 10px 13px,#fff 14px 16px,#0000 17px)}
+.wrap{max-width:980px;margin:0 auto;padding:20px 16px 60px;position:relative}
+h1{margin:6px 0 2px;font-size:clamp(28px,6vw,44px);letter-spacing:-.5px;color:#fff;text-shadow:0 3px 0 #0003}
+.sub{color:#fff;opacity:.9;margin:0 0 18px}
+.panel{background:var(--card);backdrop-filter:blur(8px);border-radius:20px;padding:16px;border:2px solid var(--line);box-shadow:0 8px 24px #0003;margin-bottom:18px}
+.search{display:flex;gap:8px}
+input{flex:1;min-width:0;font:inherit;font-size:17px;padding:13px 16px;border-radius:14px;border:2px solid var(--line);background:transparent;color:var(--ink)}
+input:focus{outline:3px solid var(--accent);border-color:transparent}
+button{font:inherit;font-weight:700;border:0;border-radius:14px;padding:12px 18px;background:var(--accent);color:#fff;cursor:pointer;box-shadow:0 4px 0 #0003}
+button:active{transform:translateY(2px);box-shadow:0 2px 0 #0003}
+button.ghost{background:transparent;color:var(--ink);border:2px solid var(--line);box-shadow:none}
+.results{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-top:14px}
+.tile{aspect-ratio:5/7;border-radius:12px;padding:8px;display:flex;flex-direction:column;justify-content:space-between;color:#fff;cursor:pointer;
+border:3px solid #ffd54a;box-shadow:0 4px 12px #0004;position:relative;overflow:hidden;text-align:left}
+.tile::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 30%,#fff5 50%,transparent 70%);opacity:.5}
+.tile .n{font-weight:800;font-size:15px;text-shadow:0 1px 2px #0006}
+.tile .e{font-size:42px;text-align:center}
+.tile .s{font-size:11px;opacity:.95}
+.tile.empty{background:transparent;border:2px dashed var(--line);box-shadow:none;cursor:default;color:var(--muted);align-items:center;justify-content:center;font-size:26px}
+.tile.empty::after{display:none}
+.tile img.ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.tile .lab{position:relative;z-index:1;margin:auto -8px -8px;padding:5px 8px;background:#000b}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.detail{display:none;gap:18px;align-items:center;flex-wrap:wrap}
+.detail.show{display:flex}
+.detail .tile{width:150px;flex:none;cursor:default}
+.price{font-size:44px;font-weight:900;color:var(--accent);line-height:1}
+.muted{color:var(--muted);font-size:13px}
+.range{margin:8px 0;font-size:14px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.total{font-size:26px;font-weight:900}
+.binder{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:12px;margin-top:12px}
+.x{position:absolute;top:4px;right:4px;z-index:2;padding:2px 8px;border-radius:99px;font-size:13px;background:#0008;box-shadow:none}
+.note{font-size:12px;color:var(--muted);margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>⚡ PokéBinder</h1>
+  <p class="sub">Zoek je kaart, zie meteen de waarde en bewaar hem in je binder.</p>
+
+  <div class="panel">
+    <div class="search"><input id="q" placeholder="Zoek op naam of nummer, bijv. Charizard of 4/102" autocomplete="off"><button id="go">Check</button><button class="ghost" id="scan">📷 Scan</button><input type="file" id="scanf" accept="image/*" capture="environment" hidden></div>
+    <div class="muted" id="scanmsg" style="margin-top:8px">Scan een kaart met je camera: Claude herkent hem en zoekt de waarde.</div>
+    <div class="results" id="results"></div>
+  </div>
+
+  <div class="panel detail" id="detail"></div>
+
+  <div class="panel">
+    <div class="top"><div><strong>📒 Mijn binder</strong><div class="muted" id="count"></div></div>
+      <div style="text-align:right"><div class="muted">Totale waarde</div><div class="total" id="total">€0</div></div></div>
+    <div class="binder" id="binder"></div>
+    <p class="note">Let op: dit zijn voorbeeldprijzen (gemiddelde NM-waarde). Live marktprijzen koppelen is de volgende stap.</p>
+  </div>
+</div>
+
+<script>
+var EMO={Vuur:"🔥",Water:"💧",Gras:"🌿",Elektrisch:"⚡",Psychisch:"🔮",Normaal:"⭐",Draak:"🐉",Vechten:"👊"};
+var COL={Vuur:"#e8542c,#f59e0b",Water:"#2f7de1,#4cc9f0",Gras:"#2e9e4f,#8bd450",Elektrisch:"#e0b100,#ffe066",Psychisch:"#8e44ad,#d77fe0",Normaal:"#7b8394,#b8bfcc",Draak:"#5a4bd1,#c0842b",Vechten:"#b5532a,#d98a4e"};
+var CARDS=[
+{id:1,n:"Charizard",set:"Basis Set",nr:"4/102",r:"Holo Rare",p:380,t:"Vuur"},
+{id:2,n:"Blastoise",set:"Basis Set",nr:"2/102",r:"Holo Rare",p:120,t:"Water"},
+{id:3,n:"Venusaur",set:"Basis Set",nr:"15/102",r:"Holo Rare",p:95,t:"Gras"},
+{id:4,n:"Pikachu",set:"Basis Set",nr:"58/102",r:"Common",p:12,t:"Elektrisch"},
+{id:5,n:"Mewtwo",set:"Basis Set",nr:"10/102",r:"Holo Rare",p:75,t:"Psychisch"},
+{id:6,n:"Gyarados",set:"Basis Set",nr:"6/102",r:"Holo Rare",p:55,t:"Water"},
+{id:7,n:"Raichu",set:"Basis Set",nr:"14/102",r:"Holo Rare",p:60,t:"Elektrisch"},
+{id:8,n:"Dragonite",set:"Fossil",nr:"4/62",r:"Holo Rare",p:48,t:"Draak"},
+{id:9,n:"Umbreon",set:"Neo Discovery",nr:"13/75",r:"Holo Rare",p:90,t:"Psychisch"},
+{id:10,n:"Eevee",set:"Jungle",nr:"51/64",r:"Common",p:6,t:"Normaal"},
+{id:11,n:"Machamp",set:"Basis Set",nr:"8/102",r:"Holo Rare",p:40,t:"Vechten"},
+{id:12,n:"Snorlax",set:"Jungle",nr:"11/64",r:"Holo Rare",p:35,t:"Normaal"},
+{id:13,n:"Charizard ex",set:"Obsidian Flames",nr:"125/197",r:"Double Rare",p:9,t:"Vuur"},
+{id:14,n:"Pikachu VMAX",set:"Vivid Voltage",nr:"044/185",r:"Ultra Rare",p:28,t:"Elektrisch"},
+{id:15,n:"Rayquaza VMAX",set:"Evolving Skies",nr:"218/203",r:"Alt Art",p:410,t:"Draak"},
+{id:16,n:"Lucario",set:"Brilliant Stars",nr:"079/172",r:"Rare",p:2,t:"Vechten"}
+];
+var binder=[],sel=null,photos={};
+function $(i){return document.getElementById(i)}
+function load(){try{var v=localStorage.getItem("pokebinder");if(v)binder=JSON.parse(v)||[]}catch(e){binder=[]}}
+function save(){try{localStorage.setItem("pokebinder",JSON.stringify(binder))}catch(e){}}
+function loadPh(){try{var v=localStorage.getItem("pokephotos");if(v)photos=JSON.parse(v)||{}}catch(e){photos={}}}
+function savePh(){try{localStorage.setItem("pokephotos",JSON.stringify(photos))}catch(e){alert("Foto opslaan lukt niet (opslag vol?).")}}
+function loadCu(){try{var v=JSON.parse(localStorage.getItem("pokecustom")||"[]");v.forEach(function(c){CARDS.push(c)})}catch(e){}}
+function saveCu(){try{localStorage.setItem("pokecustom",JSON.stringify(CARDS.filter(function(c){return c.est})))}catch(e){}}
+function shrink(f,w){return new Promise(function(ok,no){var r=new FileReader();r.onerror=no;r.onload=function(){var im=new Image();im.onerror=no;im.onload=function(){var h=Math.round(im.height*w/im.width),cv=document.createElement("canvas");cv.width=w;cv.height=h;cv.getContext("2d").drawImage(im,0,0,w,h);var url=cv.toDataURL("image/jpeg",.85);cv.toBlob(function(b){ok({blob:b,url:url})},"image/jpeg",.85)};im.src=r.result};r.readAsDataURL(f)})}
+function eur(x){return "€"+x.toLocaleString("nl-NL",{maximumFractionDigits:2})}
+function byId(id){return CARDS.filter(function(c){return c.id===id})[0]}
+function tile(c,extra){var g=COL[c.t].split(",");
+ if(photos[c.id])return '<div class="tile" '+(extra||"")+' style="background:#000"><img class="ph" src="'+photos[c.id]+'" alt="'+c.n+'"><div class="s lab"><b>'+c.n+'</b> · '+eur(c.p)+'</div></div>';
+ return '<div class="tile" '+(extra||"")+' style="background:linear-gradient(160deg,'+g[0]+','+g[1]+')"><div class="n">'+c.n+'</div><div class="e">'+EMO[c.t]+'</div><div class="s">'+c.set+' · '+c.nr+'<br><b>'+eur(c.p)+'</b></div></div>'}
+function search(){
+ var q=$("q").value.trim().toLowerCase();
+ var list=CARDS.filter(function(c){return !q||c.n.toLowerCase().indexOf(q)>-1||c.nr.indexOf(q)>-1||c.set.toLowerCase().indexOf(q)>-1});
+ $("results").innerHTML=list.length?list.map(function(c){return tile(c,'data-id="'+c.id+'"')}).join(""):'<div class="muted">Geen kaart gevonden. Probeer een andere naam.</div>';
+ if(q&&list.length===1)show(list[0].id);
+}
+function show(id){
+ var c=byId(id);sel=c;var d=$("detail");
+ var owned=binder.indexOf(id)>-1;
+ d.className="panel detail show";
+ d.innerHTML=tile(c)+'<div style="flex:1;min-width:200px"><div class="muted">Geschatte waarde</div><div class="price">'+eur(c.p)+'</div>'+
+ '<div class="range">Bereik: '+eur(Math.round(c.p*.8))+' – '+eur(Math.round(c.p*1.25))+'</div>'+
+ '<div class="muted">'+c.r+' · '+c.set+' · '+c.nr+(c.est?' · AI-schatting, geen live prijs':'')+'</div><div class="row"><button id="add">'+(owned?"✓ Al in binder":"＋ In binder")+'</button><button class="ghost" id="phb">📷 '+(photos[id]?"Andere foto":"Foto toevoegen")+'</button>'+(photos[id]?'<button class="ghost" id="phx">Foto weg</button>':'')+'<input type="file" id="ph" accept="image/*" hidden></div><div class="note">Maak een foto van je eigen kaart of kies er een uit je galerij.</div></div>';
+ $("phb").onclick=function(){$("ph").click()};
+ if($("phx"))$("phx").onclick=function(){delete photos[id];savePh();render();search();show(id)};
+ $("ph").onchange=function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){var im=new Image();im.onload=function(){var w=320,h=Math.round(im.height*w/im.width),cv=document.createElement("canvas");cv.width=w;cv.height=h;cv.getContext("2d").drawImage(im,0,0,w,h);photos[id]=cv.toDataURL("image/jpeg",.8);savePh();render();search();show(id)};im.src=r.result};r.readAsDataURL(f)};
+ $("add").onclick=function(){if(binder.indexOf(id)<0){binder.push(id);save();render();show(id)}};
+ d.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function render(){
+ var h=binder.map(function(id){var c=byId(id);return '<div style="position:relative">'+tile(c)+'<button class="x" data-rm="'+id+'">✕</button></div>'}).join("");
+ var fill=Math.max(0,9-binder.length);for(var i=0;i<fill;i++)h+='<div class="tile empty">＋</div>';
+ $("binder").innerHTML=h;
+ var t=binder.reduce(function(s,id){return s+byId(id).p},0);
+ $("total").textContent=eur(t);$("count").textContent=binder.length+" kaart"+(binder.length===1?"":"en");
+}
+async function scanCard(file){
+ var m=$("scanmsg");m.textContent="Claude bekijkt je kaart… dit duurt even ⏳";
+ try{
+  var s=window.claude?await window.claude.use("sample"):null;
+  if(!s){m.textContent="Scannen werkt alleen in de Claude-viewer. Zoek in de tussentijd op naam.";return}
+  var big=await shrink(file,900),small=await shrink(file,320);
+  var d=await s.json("Dit is een foto van een Pokémon-kaart. Herken de kaart en geef UITSLUITEND JSON terug, zonder uitleg of backticks, met velden: is_card (boolean), name (string, zoals op de kaart), number (string zoals 4/102, leeg als onleesbaar), set (string, beste gok), rarity (string), type (precies een van: Vuur, Water, Gras, Elektrisch, Psychisch, Normaal, Draak, Vechten), price_eur (getal: geschatte marktwaarde in euro voor een kaart in goede staat, op basis van je kennis), confidence (low, medium of high).",{images:[big.blob],modelTier:"default"});
+  if(!d||!d.is_card){m.textContent="Ik zie geen Pokémon-kaart op deze foto. Probeer een scherpere foto, recht van boven.";return}
+  var nm=String(d.name||"").trim(),nr=String(d.number||"").trim();
+  var hit=CARDS.filter(function(c){return c.n.toLowerCase()===nm.toLowerCase()&&(!nr||c.nr===nr)})[0];
+  if(!hit){hit={id:Date.now(),n:nm||"Onbekende kaart",set:d.set||"Onbekend",nr:nr||"?",r:d.rarity||"?",p:Math.max(0,Math.round(+d.price_eur||0)),t:COL[d.type]?d.type:"Normaal",est:1};CARDS.push(hit);saveCu()}
+  photos[hit.id]=small.url;savePh();
+  m.textContent="Herkend: "+hit.n+(d.confidence==="low"?" (niet helemaal zeker, controleer even)":"");
+  render();search();show(hit.id);
+ }catch(e){m.textContent=e&&e.code==="not_granted"?"Je hebt Claude geen toestemming gegeven om de foto te bekijken.":e&&e.code==="rate_limited"?"Even rustig aan, probeer het zo opnieuw.":"Scannen is niet gelukt. Probeer het opnieuw of zoek op naam."}
+}
+$("scan").onclick=function(){$("scanf").click()};
+$("scanf").onchange=function(e){var f=e.target.files[0];e.target.value="";if(f)scanCard(f)};
+$("go").onclick=search;
+$("q").oninput=search;
+$("q").onkeydown=function(e){if(e.key==="Enter")search()};
+$("results").onclick=function(e){var t=e.target.closest("[data-id]");if(t)show(+t.dataset.id)};
+$("binder").onclick=function(e){var r=e.target.closest("[data-rm]");if(r){var id=+r.dataset.rm;binder=binder.filter(function(x){return x!==id});save();render();if(sel&&sel.id===id)show(id)}};
+load();loadPh();loadCu();render();search();
+if(!window.claude){$("scan").style.display="none";$("scanmsg").textContent="Zoek een kaart op naam of nummer en voeg hem toe aan je binder."}
+</script>
+</body>
+</html>
