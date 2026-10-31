@@ -37,7 +37,10 @@ border:3px solid #ffd54a;box-shadow:0 4px 12px #0004;position:relative;overflow:
 .tile.empty::after{display:none}
 .tile img.ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .tile .lab{position:relative;z-index:1;margin:auto -8px -8px;padding:5px 8px;background:#000b}
-.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+.formg{grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+select{font:inherit;padding:12px;border-radius:14px;border:2px solid var(--line);background:transparent;color:var(--ink)}
+option{color:#000}
 .detail{display:none;gap:18px;align-items:center;flex-wrap:wrap}
 .detail.show{display:flex}
 .detail .tile{width:150px;flex:none;cursor:default}
@@ -54,7 +57,7 @@ border:3px solid #ffd54a;box-shadow:0 4px 12px #0004;position:relative;overflow:
 <body>
 <div class="wrap">
   <h1>⚡ PokéBinder</h1>
-  <p class="sub">Zoek je kaart, zie meteen de waarde en bewaar hem in je binder.</p>
+  <p class="sub">Zoek je kaart uit ruim 40 kaarten, zie meteen de waarde en bewaar hem in je binder.</p>
 
   <div class="panel">
     <div class="search"><input id="q" placeholder="Zoek op naam of nummer, bijv. Charizard of 4/102" autocomplete="off"><button id="go">Check</button><button class="ghost" id="scan">📷 Scan</button><input type="file" id="scanf" accept="image/*" capture="environment" hidden></div>
@@ -64,11 +67,16 @@ border:3px solid #ffd54a;box-shadow:0 4px 12px #0004;position:relative;overflow:
 
   <div class="panel detail" id="detail"></div>
 
+  <div class="panel"><button class="ghost" id="newb">＋ Eigen kaart toevoegen</button>
+    <div id="newf" class="formg" style="display:none;margin-top:12px"><input id="fn" placeholder="Naam (bijv. Gengar)"><input id="fs" placeholder="Set (bijv. Fossil)"><input id="fr" placeholder="Nummer (bijv. 5/62)"><input id="fp" type="number" min="0" step="0.5" placeholder="Waarde in €"><select id="ft"></select><button id="fa">Toevoegen</button></div></div>
+
   <div class="panel">
     <div class="top"><div><strong>📒 Mijn binder</strong><div class="muted" id="count"></div></div>
       <div style="text-align:right"><div class="muted">Totale waarde</div><div class="total" id="total">€0</div></div></div>
+    <div class="row"><select id="sortb"><option value="add">Volgorde: toegevoegd</option><option value="val">Waarde hoog → laag</option><option value="nm">Naam A–Z</option></select><button class="ghost" id="bk">Back-up kopiëren</button><button class="ghost" id="rs">Herstellen</button></div>
+    <div class="muted" id="best" style="margin-top:8px"></div>
     <div class="binder" id="binder"></div>
-    <p class="note">Let op: dit zijn voorbeeldprijzen (gemiddelde NM-waarde). Live marktprijzen koppelen is de volgende stap.</p>
+    <p class="note">Let op: kaarten met een prijspeil-datum zijn gecontroleerd (ongegradeerd, omgerekend naar euro). De andere prijzen zijn nog voorbeeldwaarden; vul bij die kaarten zelf je prijs in.</p>
   </div>
 </div>
 
@@ -76,31 +84,60 @@ border:3px solid #ffd54a;box-shadow:0 4px 12px #0004;position:relative;overflow:
 var EMO={Vuur:"🔥",Water:"💧",Gras:"🌿",Elektrisch:"⚡",Psychisch:"🔮",Normaal:"⭐",Draak:"🐉",Vechten:"👊"};
 var COL={Vuur:"#e8542c,#f59e0b",Water:"#2f7de1,#4cc9f0",Gras:"#2e9e4f,#8bd450",Elektrisch:"#e0b100,#ffe066",Psychisch:"#8e44ad,#d77fe0",Normaal:"#7b8394,#b8bfcc",Draak:"#5a4bd1,#c0842b",Vechten:"#b5532a,#d98a4e"};
 var CARDS=[
-{id:1,n:"Charizard",set:"Basis Set",nr:"4/102",r:"Holo Rare",p:380,t:"Vuur"},
-{id:2,n:"Blastoise",set:"Basis Set",nr:"2/102",r:"Holo Rare",p:120,t:"Water"},
-{id:3,n:"Venusaur",set:"Basis Set",nr:"15/102",r:"Holo Rare",p:95,t:"Gras"},
+{id:1,n:"Charizard",set:"Basis Set",nr:"4/102",r:"Holo Rare",p:360,t:"Vuur",d:"31 okt 2026"},
+{id:2,n:"Blastoise",set:"Basis Set",nr:"2/102",r:"Holo Rare",p:80,t:"Water",d:"31 okt 2026"},
+{id:3,n:"Venusaur",set:"Basis Set",nr:"15/102",r:"Holo Rare",p:100,t:"Gras",d:"okt 2025"},
 {id:4,n:"Pikachu",set:"Basis Set",nr:"58/102",r:"Common",p:12,t:"Elektrisch"},
-{id:5,n:"Mewtwo",set:"Basis Set",nr:"10/102",r:"Holo Rare",p:75,t:"Psychisch"},
-{id:6,n:"Gyarados",set:"Basis Set",nr:"6/102",r:"Holo Rare",p:55,t:"Water"},
-{id:7,n:"Raichu",set:"Basis Set",nr:"14/102",r:"Holo Rare",p:60,t:"Elektrisch"},
+{id:5,n:"Mewtwo",set:"Basis Set",nr:"10/102",r:"Holo Rare",p:40,t:"Psychisch",d:"jan 2026"},
+{id:6,n:"Gyarados",set:"Basis Set",nr:"6/102",r:"Holo Rare",p:29,t:"Water",d:"okt 2025"},
+{id:7,n:"Raichu",set:"Basis Set",nr:"14/102",r:"Holo Rare",p:40,t:"Elektrisch",d:"jan 2026"},
 {id:8,n:"Dragonite",set:"Fossil",nr:"4/62",r:"Holo Rare",p:48,t:"Draak"},
-{id:9,n:"Umbreon",set:"Neo Discovery",nr:"13/75",r:"Holo Rare",p:90,t:"Psychisch"},
+{id:9,n:"Umbreon",set:"Neo Discovery",nr:"13/75",r:"Holo Rare",p:600,t:"Psychisch",d:"31 okt 2026"},
 {id:10,n:"Eevee",set:"Jungle",nr:"51/64",r:"Common",p:6,t:"Normaal"},
 {id:11,n:"Machamp",set:"Basis Set",nr:"8/102",r:"Holo Rare",p:40,t:"Vechten"},
 {id:12,n:"Snorlax",set:"Jungle",nr:"11/64",r:"Holo Rare",p:35,t:"Normaal"},
 {id:13,n:"Charizard ex",set:"Obsidian Flames",nr:"125/197",r:"Double Rare",p:9,t:"Vuur"},
 {id:14,n:"Pikachu VMAX",set:"Vivid Voltage",nr:"044/185",r:"Ultra Rare",p:28,t:"Elektrisch"},
-{id:15,n:"Rayquaza VMAX",set:"Evolving Skies",nr:"218/203",r:"Alt Art",p:410,t:"Draak"},
-{id:16,n:"Lucario",set:"Brilliant Stars",nr:"079/172",r:"Rare",p:2,t:"Vechten"}
+{id:15,n:"Rayquaza VMAX",set:"Evolving Skies",nr:"218/203",r:"Alt Art",p:950,t:"Draak",d:"31 okt 2026"},
+{id:16,n:"Lucario",set:"Brilliant Stars",nr:"079/172",r:"Rare",p:2,t:"Vechten"},
+{id:17,n:"Alakazam",set:"Basis Set",nr:"1/102",r:"Holo Rare",p:45,t:"Psychisch"},
+{id:18,n:"Ninetales",set:"Basis Set",nr:"12/102",r:"Holo Rare",p:30,t:"Vuur"},
+{id:19,n:"Zapdos",set:"Basis Set",nr:"16/102",r:"Holo Rare",p:35,t:"Elektrisch"},
+{id:20,n:"Chansey",set:"Basis Set",nr:"3/102",r:"Holo Rare",p:40,t:"Normaal"},
+{id:21,n:"Hitmonchan",set:"Basis Set",nr:"7/102",r:"Holo Rare",p:25,t:"Vechten"},
+{id:22,n:"Poliwrath",set:"Basis Set",nr:"13/102",r:"Holo Rare",p:25,t:"Water"},
+{id:23,n:"Magneton",set:"Basis Set",nr:"9/102",r:"Holo Rare",p:20,t:"Elektrisch"},
+{id:24,n:"Nidoking",set:"Basis Set",nr:"11/102",r:"Holo Rare",p:25,t:"Gras"},
+{id:25,n:"Clefairy",set:"Basis Set",nr:"5/102",r:"Holo Rare",p:30,t:"Normaal"},
+{id:26,n:"Gengar",set:"Fossil",nr:"5/62",r:"Holo Rare",p:40,t:"Psychisch"},
+{id:27,n:"Articuno",set:"Fossil",nr:"2/62",r:"Holo Rare",p:25,t:"Water"},
+{id:28,n:"Moltres",set:"Fossil",nr:"12/62",r:"Holo Rare",p:25,t:"Vuur"},
+{id:29,n:"Lapras",set:"Fossil",nr:"10/62",r:"Holo Rare",p:25,t:"Water"},
+{id:30,n:"Pikachu",set:"Jungle",nr:"60/64",r:"Common",p:10,t:"Elektrisch"},
+{id:31,n:"Vaporeon",set:"Jungle",nr:"12/64",r:"Holo Rare",p:35,t:"Water"},
+{id:32,n:"Jolteon",set:"Jungle",nr:"4/64",r:"Holo Rare",p:40,t:"Elektrisch"},
+{id:33,n:"Flareon",set:"Jungle",nr:"3/64",r:"Holo Rare",p:35,t:"Vuur"},
+{id:34,n:"Espeon",set:"Neo Discovery",nr:"1/75",r:"Holo Rare",p:200,t:"Psychisch"},
+{id:35,n:"Lugia",set:"Neo Genesis",nr:"9/111",r:"Holo Rare",p:250,t:"Psychisch"},
+{id:36,n:"Typhlosion",set:"Neo Genesis",nr:"17/111",r:"Holo Rare",p:90,t:"Vuur"},
+{id:37,n:"Pikachu",set:"Celebrations",nr:"005/025",r:"Holo Rare",p:8,t:"Elektrisch"},
+{id:38,n:"Charizard",set:"Celebrations",nr:"004/025",r:"Holo Rare",p:40,t:"Vuur"},
+{id:39,n:"Mew ex",set:"Paldean Fates",nr:"232/091",r:"Special Illustration",p:50,t:"Psychisch"},
+{id:40,n:"Umbreon VMAX",set:"Evolving Skies",nr:"215/203",r:"Alt Art",p:1300,t:"Psychisch"},
+{id:41,n:"Gengar VMAX",set:"Fusion Strike",nr:"271/264",r:"Alt Art",p:300,t:"Psychisch"},
+{id:42,n:"Giratina V",set:"Lost Origin",nr:"186/196",r:"Alt Art",p:250,t:"Draak"},
+{id:43,n:"Lugia V",set:"Silver Tempest",nr:"186/195",r:"Alt Art",p:180,t:"Normaal"}
 ];
-var binder=[],sel=null,photos={};
+var binder=[],sel=null,photos={},prices={},sortm="add";
 function $(i){return document.getElementById(i)}
 function load(){try{var v=localStorage.getItem("pokebinder");if(v)binder=JSON.parse(v)||[]}catch(e){binder=[]}}
 function save(){try{localStorage.setItem("pokebinder",JSON.stringify(binder))}catch(e){}}
 function loadPh(){try{var v=localStorage.getItem("pokephotos");if(v)photos=JSON.parse(v)||{}}catch(e){photos={}}}
 function savePh(){try{localStorage.setItem("pokephotos",JSON.stringify(photos))}catch(e){alert("Foto opslaan lukt niet (opslag vol?).")}}
+function loadPr(){try{prices=JSON.parse(localStorage.getItem("pokeprices")||"{}")||{};Object.keys(prices).forEach(function(k){var c=byId(+k);if(c)c.p=prices[k]})}catch(e){prices={}}}
+function savePr(){try{localStorage.setItem("pokeprices",JSON.stringify(prices))}catch(e){}}
 function loadCu(){try{var v=JSON.parse(localStorage.getItem("pokecustom")||"[]");v.forEach(function(c){CARDS.push(c)})}catch(e){}}
-function saveCu(){try{localStorage.setItem("pokecustom",JSON.stringify(CARDS.filter(function(c){return c.est})))}catch(e){}}
+function saveCu(){try{localStorage.setItem("pokecustom",JSON.stringify(CARDS.filter(function(c){return c.est||c.cu})))}catch(e){}}
 function shrink(f,w){return new Promise(function(ok,no){var r=new FileReader();r.onerror=no;r.onload=function(){var im=new Image();im.onerror=no;im.onload=function(){var h=Math.round(im.height*w/im.width),cv=document.createElement("canvas");cv.width=w;cv.height=h;cv.getContext("2d").drawImage(im,0,0,w,h);var url=cv.toDataURL("image/jpeg",.85);cv.toBlob(function(b){ok({blob:b,url:url})},"image/jpeg",.85)};im.src=r.result};r.readAsDataURL(f)})}
 function eur(x){return "€"+x.toLocaleString("nl-NL",{maximumFractionDigits:2})}
 function byId(id){return CARDS.filter(function(c){return c.id===id})[0]}
@@ -110,7 +147,7 @@ function tile(c,extra){var g=COL[c.t].split(",");
 function search(){
  var q=$("q").value.trim().toLowerCase();
  var list=CARDS.filter(function(c){return !q||c.n.toLowerCase().indexOf(q)>-1||c.nr.indexOf(q)>-1||c.set.toLowerCase().indexOf(q)>-1});
- $("results").innerHTML=list.length?list.map(function(c){return tile(c,'data-id="'+c.id+'"')}).join(""):'<div class="muted">Geen kaart gevonden. Probeer een andere naam.</div>';
+ if(!q)list=list.slice(0,12);$("results").innerHTML=list.length?list.map(function(c){return tile(c,'data-id="'+c.id+'"')}).join(""):'<div class="muted">Geen kaart gevonden. Probeer een andere naam.</div>';
  if(q&&list.length===1)show(list[0].id);
 }
 function show(id){
@@ -119,19 +156,21 @@ function show(id){
  d.className="panel detail show";
  d.innerHTML=tile(c)+'<div style="flex:1;min-width:200px"><div class="muted">Geschatte waarde</div><div class="price">'+eur(c.p)+'</div>'+
  '<div class="range">Bereik: '+eur(Math.round(c.p*.8))+' – '+eur(Math.round(c.p*1.25))+'</div>'+
- '<div class="muted">'+c.r+' · '+c.set+' · '+c.nr+(c.est?' · AI-schatting, geen live prijs':'')+'</div><div class="row"><button id="add">'+(owned?"✓ Al in binder":"＋ In binder")+'</button><button class="ghost" id="phb">📷 '+(photos[id]?"Andere foto":"Foto toevoegen")+'</button>'+(photos[id]?'<button class="ghost" id="phx">Foto weg</button>':'')+'<input type="file" id="ph" accept="image/*" hidden></div><div class="note">Maak een foto van je eigen kaart of kies er een uit je galerij.</div></div>';
+ '<div class="muted">'+c.r+' · '+c.set+' · '+c.nr+(c.est?' · AI-schatting, geen live prijs':'')+(c.d?' · prijspeil '+c.d:'')+'</div><div class="row"><button id="add">'+(owned?"✓ Al in binder":"＋ In binder")+'</button><button class="ghost" id="phb">📷 '+(photos[id]?"Andere foto":"Foto toevoegen")+'</button>'+(photos[id]?'<button class="ghost" id="phx">Foto weg</button>':'')+'<input type="file" id="ph" accept="image/*" hidden></div><div class="note">Maak een foto van je eigen kaart of kies er een uit je galerij.</div><div class="row"><input id="mp" type="number" min="0" step="0.5" placeholder="Mijn prijs in €" style="max-width:170px"><button class="ghost" id="mps">Prijs opslaan</button></div></div>';
  $("phb").onclick=function(){$("ph").click()};
  if($("phx"))$("phx").onclick=function(){delete photos[id];savePh();render();search();show(id)};
  $("ph").onchange=function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){var im=new Image();im.onload=function(){var w=320,h=Math.round(im.height*w/im.width),cv=document.createElement("canvas");cv.width=w;cv.height=h;cv.getContext("2d").drawImage(im,0,0,w,h);photos[id]=cv.toDataURL("image/jpeg",.8);savePh();render();search();show(id)};im.src=r.result};r.readAsDataURL(f)};
  $("add").onclick=function(){if(binder.indexOf(id)<0){binder.push(id);save();render();show(id)}};
+ $("mps").onclick=function(){var v=parseFloat($("mp").value);if(isNaN(v)||v<0)return;c.p=v;prices[id]=v;savePr();render();search();show(id)};
  d.scrollIntoView({behavior:"smooth",block:"nearest"});
 }
 function render(){
- var h=binder.map(function(id){var c=byId(id);return '<div style="position:relative">'+tile(c)+'<button class="x" data-rm="'+id+'">✕</button></div>'}).join("");
+ var ids=binder.slice();if(sortm==="val")ids.sort(function(a,b){return byId(b).p-byId(a).p});if(sortm==="nm")ids.sort(function(a,b){return byId(a).n.localeCompare(byId(b).n)});
+ var h=ids.map(function(id){var c=byId(id);return '<div style="position:relative">'+tile(c)+'<button class="x" data-rm="'+id+'">✕</button></div>'}).join("");
  var fill=Math.max(0,9-binder.length);for(var i=0;i<fill;i++)h+='<div class="tile empty">＋</div>';
  $("binder").innerHTML=h;
  var t=binder.reduce(function(s,id){return s+byId(id).p},0);
- $("total").textContent=eur(t);$("count").textContent=binder.length+" kaart"+(binder.length===1?"":"en");
+ $("total").textContent=eur(t);var top=binder.map(function(id){return byId(id)}).sort(function(a,b){return b.p-a.p})[0];$("best").textContent=top?"Duurste kaart: "+top.n+" ("+eur(top.p)+")":"";$("count").textContent=binder.length+" kaart"+(binder.length===1?"":"en");
 }
 async function scanCard(file){
  var m=$("scanmsg");m.textContent="Claude bekijkt je kaart… dit duurt even ⏳";
@@ -156,8 +195,14 @@ $("q").oninput=search;
 $("q").onkeydown=function(e){if(e.key==="Enter")search()};
 $("results").onclick=function(e){var t=e.target.closest("[data-id]");if(t)show(+t.dataset.id)};
 $("binder").onclick=function(e){var r=e.target.closest("[data-rm]");if(r){var id=+r.dataset.rm;binder=binder.filter(function(x){return x!==id});save();render();if(sel&&sel.id===id)show(id)}};
-load();loadPh();loadCu();render();search();
-if(!window.claude){$("scan").style.display="none";$("scanmsg").textContent="Zoek een kaart op naam of nummer en voeg hem toe aan je binder."}
+Object.keys(COL).forEach(function(k){var o=document.createElement("option");o.value=k;o.textContent=EMO[k]+" "+k;$("ft").appendChild(o)});
+$("newb").onclick=function(){var f=$("newf");f.style.display=f.style.display==="grid"?"none":"grid"};
+$("fa").onclick=function(){var n=$("fn").value.trim();if(!n){$("fn").focus();return}var c={id:Date.now(),n:n,set:$("fs").value.trim()||"Eigen kaart",nr:$("fr").value.trim()||"?",r:"Eigen invoer",p:Math.max(0,parseFloat($("fp").value)||0),t:$("ft").value,cu:1};CARDS.push(c);saveCu();["fn","fs","fr","fp"].forEach(function(i){$(i).value=""});$("q").value="";search();show(c.id)};
+$("sortb").onchange=function(e){sortm=e.target.value;render()};
+$("bk").onclick=function(){var s=JSON.stringify({binder:binder,custom:CARDS.filter(function(c){return c.est||c.cu}),prices:prices});try{navigator.clipboard.writeText(s).then(function(){alert("Back-up gekopieerd. Plak hem ergens veilig, bijvoorbeeld in je notities.")},function(){prompt("Kopieer deze back-up:",s)})}catch(e){prompt("Kopieer deze back-up:",s)}};
+$("rs").onclick=function(){var s=prompt("Plak je back-up hier:");if(!s)return;try{var d=JSON.parse(s);(d.custom||[]).forEach(function(c){if(!byId(c.id))CARDS.push(c)});prices=d.prices||{};Object.keys(prices).forEach(function(k){var c=byId(+k);if(c)c.p=prices[k]});binder=(d.binder||[]).filter(function(id){return byId(id)});save();saveCu();savePr();render();search()}catch(e){alert("Deze back-up kan ik niet lezen.")}};
+load();loadPh();loadCu();loadPr();render();search();
+if(!window.claude){$("scan").style.display="none";$("scanmsg").textContent="Zoek een kaart op naam of nummer, of voeg je eigen kaart toe."}
 </script>
 </body>
 </html>
